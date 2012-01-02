@@ -63,7 +63,7 @@ class NSEC3(dns.rdata.Rdata):
         self.windows = windows
 
     def to_text(self, origin=None, relativize=True, **kw):
-        next = base64.b32encode(self.next).translate(b32_normal_to_hex).lower()
+        next = base64.b32encode(self.__next__).translate(b32_normal_to_hex).lower()
         next = next.decode('ascii')
         if self.salt == b'':
             salt = '-'
@@ -135,9 +135,9 @@ class NSEC3(dns.rdata.Rdata):
         file.write(struct.pack("!BBHB", self.algorithm, self.flags,
                                self.iterations, l))
         file.write(self.salt)
-        l = len(self.next)
+        l = len(self.__next__)
         file.write(struct.pack("!B", l))
-        file.write(self.next)
+        file.write(self.__next__)
         for (window, bitmap) in self.windows:
             dns.util.write_uint8(file, window)
             dns.util.write_uint8(file, len(bitmap))

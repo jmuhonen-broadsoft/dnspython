@@ -264,7 +264,7 @@ The differences shown will be logical differences, not textual differences.
     if not changes:
         sys.exit(0)
     if opts.html:
-        print(format_changes_html(oldn, newn, changes, opts.ignore_ttl))
+        print((format_changes_html(oldn, newn, changes, opts.ignore_ttl)))
     else:
-        print(format_changes_plain(oldn, newn, changes, opts.ignore_ttl))
+        print((format_changes_plain(oldn, newn, changes, opts.ignore_ttl)))
     sys.exit(1)

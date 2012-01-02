@@ -34,7 +34,7 @@ import dns.rdatatype
 import dns.reversename
 
 if sys.platform == 'win32':
-    import _winreg
+    import winreg
 
 class NXDOMAIN(dns.exception.DNSException):
     """The query name does not exist."""
@@ -217,7 +217,7 @@ class Cache(object):
         now = time.time()
         if self.next_cleaning <= now:
             keys_to_delete = []
-            for (k, v) in self.data.items():
+            for (k, v) in list(self.data.items()):
                 if v.expiration <= now:
                     keys_to_delete.append(k)
             for k in keys_to_delete:
@@ -286,13 +286,13 @@ class LRUCacheNode(object):
 
     def link_after(self, node):
         self.prev = node
-        self.next = node.next
+        self.next = node.__next__
         node.next.prev = self
         node.next = self
 
     def unlink(self):
         self.next.prev = self.prev
-        self.prev.next = self.next
+        self.prev.next = self.__next__
 
 class LRUCache(object):
     """Bounded least-recently-used DNS answer cache.
@@ -382,9 +382,9 @@ class LRUCache(object):
                 node.unlink()
                 del self.data[node.key]
         else:
-            node = self.sentinel.next
+            node = self.sentinel.__next__
             while node != self.sentinel:
-                next = node.next
+                next = node.__next__
                 node.prev = None
                 node.next = None
                 node = next
@@ -539,32 +539,32 @@ class Resolver(object):
     def _config_win32_fromkey(self, key):
         """Extract DNS info from a registry key."""
         try:
-            servers, rtype = _winreg.QueryValueEx(key, 'NameServer')
+            servers, rtype = winreg.QueryValueEx(key, 'NameServer')
         except WindowsError:
             servers = None
         if servers:
             self._config_win32_nameservers(servers)
             try:
-                dom, rtype = _winreg.QueryValueEx(key, 'Domain')
+                dom, rtype = winreg.QueryValueEx(key, 'Domain')
                 if dom:
                     self._config_win32_domain(dom)
             except WindowsError:
                 pass
         else:
             try:
-                servers, rtype = _winreg.QueryValueEx(key, 'DhcpNameServer')
+                servers, rtype = winreg.QueryValueEx(key, 'DhcpNameServer')
             except WindowsError:
                 servers = None
             if servers:
                 self._config_win32_nameservers(servers)
                 try:
-                    dom, rtype = _winreg.QueryValueEx(key, 'DhcpDomain')
+                    dom, rtype = winreg.QueryValueEx(key, 'DhcpDomain')
                     if dom:
                         self._config_win32_domain(dom)
                 except WindowsError:
                     pass
         try:
-            search, rtype = _winreg.QueryValueEx(key, 'SearchList')
+            search, rtype = winreg.QueryValueEx(key, 'SearchList')
         except WindowsError:
             search = None
         if search:
@@ -572,18 +572,18 @@ class Resolver(object):
 
     def read_registry(self):
         """Extract resolver configuration from the Windows registry."""
-        lm = _winreg.ConnectRegistry(None, _winreg.HKEY_LOCAL_MACHINE)
+        lm = winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE)
         want_scan = False
         try:
             try:
                 # XP, 2000
-                tcp_params = _winreg.OpenKey(lm,
+                tcp_params = winreg.OpenKey(lm,
                                              r'SYSTEM\CurrentControlSet'
                                              r'\Services\Tcpip\Parameters')
                 want_scan = True
             except EnvironmentError:
                 # ME
-                tcp_params = _winreg.OpenKey(lm,
+                tcp_params = winreg.OpenKey(lm,
                                              r'SYSTEM\CurrentControlSet'
                                              r'\Services\VxD\MSTCP')
             try:
@@ -591,7 +591,7 @@ class Resolver(object):
             finally:
                 tcp_params.Close()
             if want_scan:
-                interfaces = _winreg.OpenKey(lm,
+                interfaces = winreg.OpenKey(lm,
                                              r'SYSTEM\CurrentControlSet'
                                              r'\Services\Tcpip\Parameters'
                                              r'\Interfaces')
@@ -599,9 +599,9 @@ class Resolver(object):
                     i = 0
                     while True:
                         try:
-                            guid = _winreg.EnumKey(interfaces, i)
+                            guid = winreg.EnumKey(interfaces, i)
                             i += 1
-                            key = _winreg.OpenKey(interfaces, guid)
+                            key = winreg.OpenKey(interfaces, guid)
                             if not self._win32_is_nic_enabled(lm, guid, key):
                                 continue
                             try:
@@ -624,7 +624,7 @@ class Resolver(object):
          try:
              # This hard-coded location seems to be consistent, at least
              # from Windows 2000 through Vista.
-             connection_key = _winreg.OpenKey(
+             connection_key = winreg.OpenKey(
                  lm,
                  r'SYSTEM\CurrentControlSet\Control\Network'
                  r'\{4D36E972-E325-11CE-BFC1-08002BE10318}'
@@ -632,21 +632,21 @@ class Resolver(object):
 
              try:
                  # The PnpInstanceID points to a key inside Enum
-                 (pnp_id, ttype) = _winreg.QueryValueEx(
+                 (pnp_id, ttype) = winreg.QueryValueEx(
                      connection_key, 'PnpInstanceID')
 
-                 if ttype != _winreg.REG_SZ:
+                 if ttype != winreg.REG_SZ:
                      raise ValueError
 
-                 device_key = _winreg.OpenKey(
+                 device_key = winreg.OpenKey(
                      lm, r'SYSTEM\CurrentControlSet\Enum\%s' % pnp_id)
 
                  try:
                      # Get ConfigFlags for this device
-                     (flags, ttype) = _winreg.QueryValueEx(
+                     (flags, ttype) = winreg.QueryValueEx(
                          device_key, 'ConfigFlags')
 
-                     if ttype != _winreg.REG_DWORD:
+                     if ttype != winreg.REG_DWORD:
                          raise ValueError
 
                      # Based on experimentation, bit 0x1 indicates that the
@@ -664,7 +664,7 @@ class Resolver(object):
              # the old method since we don't know if the code above works
              # on Windows 95/98/ME.
              try:
-                 (nte, ttype) = _winreg.QueryValueEx(interface_key,
+                 (nte, ttype) = winreg.QueryValueEx(interface_key,
                                                      'NTEContextList')
                  return nte is not None
              except WindowsError:
@@ -849,7 +849,7 @@ class Resolver(object):
         @type algorithm: string"""
         self.keyring = keyring
         if keyname is None:
-            self.keyname = next(iter(self.keyring.keys()))
+            self.keyname = next(iter(list(self.keyring.keys())))
         else:
             self.keyname = keyname
         self.keyalgorithm = algorithm

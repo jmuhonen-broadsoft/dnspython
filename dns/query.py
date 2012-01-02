@@ -15,7 +15,7 @@
 
 """Talk to a DNS server."""
 
-from __future__ import generators
+
 
 import errno
 import select

@@ -82,8 +82,8 @@ class NameTestCase(unittest.TestCase):
                 n = dns.name.from_text(t)
             except:
                 info = sys.exc_info()
-                print(info[0])
-                print(info[2])
+                print((info[0]))
+                print((info[2]))
                 self.fail("good test '%s' raised an exception" % t)
         for t in bad:
             caught = False
